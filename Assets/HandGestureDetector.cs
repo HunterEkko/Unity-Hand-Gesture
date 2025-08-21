@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 using UnityEngine.XR.Hands.Gestures;
 using UnityEngine.Events;
 using UnityEngine.XR.Hands;
@@ -16,6 +17,9 @@ public class HandGestureDetector : MonoBehaviour
     Transform m_TargetTransform; // 如果使用 XRHandPose，這個是目標 Transform，判斷相對旋轉用
 
     [SerializeField]
+    string textObjectName = "GestureText";
+
+    [SerializeField]
     UnityEvent m_GesturePerformed; // 當手勢成功完成時要執行的事件
 
     [SerializeField]
@@ -27,6 +31,7 @@ public class HandGestureDetector : MonoBehaviour
     [SerializeField]
     float m_GestureDetectionInterval = 0.1f; // 每隔多久檢查一次是否達成手勢
 
+    static TMP_Text gestureText;
     XRHandShape m_HandShape; // 內部使用：轉型後存放 XRHandShape
     XRHandPose m_HandPose; // 內部使用：轉型後存放 XRHandPose
     bool m_WasDetected; // 上一幀是否有偵測到符合的手勢
@@ -34,9 +39,15 @@ public class HandGestureDetector : MonoBehaviour
     float m_TimeOfLastConditionCheck; // 上次檢查手勢條件的時間
     float m_HoldStartTime; // 開始保持手勢的時間
 
+    void Awake()
+    {
+        // 自動尋找場景中的 TMP_Text（只找一次）
+        if (gestureText == null)
+            gestureText = GameObject.Find(textObjectName)?.GetComponent<TMP_Text>();
+    }
+
     void OnEnable()
     {
-        // 當這個物件啟用時，訂閱 jointsUpdated 事件
         m_HandTrackingEvents.jointsUpdated.AddListener(OnJointsUpdated);
 
         // 嘗試把 ScriptableObject 轉型為 XRHandShape 或 XRHandPose
@@ -50,7 +61,6 @@ public class HandGestureDetector : MonoBehaviour
 
     void OnDisable()
     {
-        // 當物件被停用時，移除事件監聽
         m_HandTrackingEvents.jointsUpdated.RemoveListener(OnJointsUpdated);
     }
 
@@ -76,7 +86,7 @@ public class HandGestureDetector : MonoBehaviour
         else if (m_WasDetected && !detected)
         {
             m_PerformedTriggered = false;
-            m_GestureEnded?.Invoke(); // 執行事件（如果有被指定）
+            m_GestureEnded?.Invoke();
         }
 
         // 更新上一幀的偵測狀態
@@ -91,7 +101,12 @@ public class HandGestureDetector : MonoBehaviour
             // 如果保持超過設定時間，觸發手勢事件
             if (holdTimer > m_MinimumHoldTime)
             {
-                m_GesturePerformed?.Invoke(); // 執行事件（如果有被指定）
+                if (gestureText != null)
+                {
+                    if (m_HandShape != null) gestureText.text = m_HandShape.name;
+                    else if (m_HandPose != null) gestureText.text = m_HandPose.name;
+                }
+                m_GesturePerformed?.Invoke();
                 m_PerformedTriggered = true; // 記得已經觸發過了
             }
         }
